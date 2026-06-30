@@ -233,8 +233,16 @@ export function ProfileForm() {
   } = useAudioRecording({
     maxDurationSeconds: 29,
     onRecordingComplete: (blob, recordedDuration) => {
-      const file = new File([blob], `recording-${Date.now()}.webm`, {
-        type: blob.type || 'audio/webm',
+      const mimeType = blob.type || 'audio/webm';
+      const extension = mimeType.includes('wav')
+        ? 'wav'
+        : mimeType.includes('ogg')
+          ? 'ogg'
+          : mimeType.includes('mp4') || mimeType.includes('aac')
+            ? 'm4a'
+            : 'webm';
+      const file = new File([blob], `recording-${Date.now()}.${extension}`, {
+        type: mimeType,
       }) as File & { recordedDuration?: number };
       // Store the actual recorded duration to bypass metadata reading issues on Windows
       if (recordedDuration !== undefined) {

@@ -75,22 +75,16 @@ export async function getAudioDuration(
  * This ensures compatibility without requiring ffmpeg on the backend.
  */
 export async function convertToWav(audioBlob: Blob): Promise<Blob> {
-  // Create audio context
   const audioContext = new AudioContext();
-
-  // Read blob as array buffer
-  const arrayBuffer = await audioBlob.arrayBuffer();
-
-  // Decode audio data
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-  // Convert to WAV
-  const wavBlob = audioBufferToWav(audioBuffer);
-
-  // Close audio context to free resources
-  await audioContext.close();
-
-  return wavBlob;
+  try {
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    return audioBufferToWav(audioBuffer);
+  } finally {
+    // decodeAudioData can throw for unsupported browser codecs. Always close
+    // the context before the caller falls back to server-side decoding.
+    await audioContext.close();
+  }
 }
 
 /**

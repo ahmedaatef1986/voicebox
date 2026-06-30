@@ -2,10 +2,75 @@
 Audio processing utilities.
 """
 
+import logging
+import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import Optional, Tuple
+
+import librosa
 import numpy as np
 import soundfile as sf
-import librosa
-from typing import Tuple, Optional
+
+logger = logging.getLogger(__name__)
+
+
+def _load_audio_with_ffmpeg(
+    path: str,
+    sample_rate: int,
+    mono: bool,
+) -> Tuple[np.ndarray, int]:
+    """Decode an audio file through FFmpeg when Python decoders reject it."""
+    ffmpeg = os.environ.get("VOICEBOX_FFMPEG_PATH") or shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError(
+            "FFmpeg is not available. Install FFmpeg or set VOICEBOX_FFMPEG_PATH."
+        )
+
+    temp_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            temp_path = tmp.name
+
+        command = [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            path,
+            "-vn",
+        ]
+        if mono:
+            command.extend(["-ac", "1"])
+        command.extend(
+            ["-ar", str(sample_rate), "-c:a", "pcm_s16le", temp_path]
+        )
+
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        if result.returncode != 0:
+            detail = result.stderr.strip() or f"FFmpeg exited with code {result.returncode}"
+            raise RuntimeError(detail[-1000:])
+
+        audio, decoded_rate = sf.read(temp_path, dtype="float32", always_2d=False)
+        audio = np.asarray(audio, dtype=np.float32)
+        if mono and audio.ndim > 1:
+            audio = np.mean(audio, axis=1, dtype=np.float32)
+        elif not mono and audio.ndim > 1:
+            audio = audio.T
+        return audio, int(decoded_rate)
+    finally:
+        if temp_path:
+            Path(temp_path).unlink(missing_ok=True)
 
 
 def normalize_audio(
@@ -60,8 +125,24 @@ def load_audio(
     Returns:
         Tuple of (audio_array, sample_rate)
     """
-    audio, sr = librosa.load(path, sr=sample_rate, mono=mono)
-    return audio, sr
+    try:
+        audio, sr = librosa.load(path, sr=sample_rate, mono=mono)
+        return audio, sr
+    except Exception as primary_error:
+        primary_detail = str(primary_error).strip() or type(primary_error).__name__
+        logger.warning(
+            "Primary audio decoder rejected %s (%s); trying FFmpeg",
+            Path(path).suffix or "audio file",
+            primary_detail,
+        )
+        try:
+            return _load_audio_with_ffmpeg(path, sample_rate, mono)
+        except Exception as ffmpeg_error:
+            ffmpeg_detail = str(ffmpeg_error).strip() or type(ffmpeg_error).__name__
+            raise RuntimeError(
+                "Could not decode the audio file. "
+                f"Primary decoder: {primary_detail}. FFmpeg: {ffmpeg_detail}"
+            ) from primary_error
 
 
 def save_audio(
@@ -84,9 +165,6 @@ def save_audio(
     Raises:
         OSError: If file cannot be written
     """
-    from pathlib import Path
-    import os
-
     temp_path = f"{path}.tmp"
     try:
         # Ensure parent directory exists

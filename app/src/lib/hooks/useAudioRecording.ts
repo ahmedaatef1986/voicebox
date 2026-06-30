@@ -97,7 +97,12 @@ export function useAudioRecording({
           ? (Date.now() - startTimeRef.current) / 1000
           : undefined;
 
-        const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        // Preserve the container type selected by MediaRecorder. Browsers can
+        // fall back to Ogg or MP4 when WebM/Opus is unavailable; labelling
+        // those bytes as WebM makes every downstream decoder reject the file.
+        const recordedMimeType =
+          mediaRecorderRef.current?.mimeType || chunksRef.current[0]?.type || 'audio/webm';
+        const encodedBlob = new Blob(chunksRef.current, { type: recordedMimeType });
 
         // Stop all tracks now that we have the data
         streamRef.current?.getTracks().forEach((track) => {
@@ -110,12 +115,12 @@ export function useAudioRecording({
 
         // Convert to WAV format to avoid needing ffmpeg on backend
         try {
-          const wavBlob = await convertToWav(webmBlob);
+          const wavBlob = await convertToWav(encodedBlob);
           onRecordingComplete?.(wavBlob, recordedDuration);
         } catch (err) {
           console.error('Error converting audio to WAV:', err);
           // Fallback to original blob if conversion fails
-          onRecordingComplete?.(webmBlob, recordedDuration);
+          onRecordingComplete?.(encodedBlob, recordedDuration);
         }
       };
 
