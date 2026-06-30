@@ -14,6 +14,11 @@ accelerate>=0.26.0
 huggingface_hub>=0.20.0
 qwen-tts>=0.0.5
 
+# VoiceTut Egyptian-Arabic preset engine.  VoiceTut's PyPI metadata keeps the
+# heavyweight inference engine optional, so OmniVoice must be declared here.
+voicetut-tts>=0.1.1
+omnivoice>=0.1.5
+
 # LuxTTS (voice cloning engine)
 # piper-phonemize needs custom index (no PyPI wheels)
 --find-links https://k2-fsa.github.io/icefall/piper_phonemize.html

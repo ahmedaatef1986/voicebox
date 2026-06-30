@@ -215,6 +215,7 @@ TTS_ENGINES = {
     "chatterbox_turbo": "Chatterbox Turbo",
     "tada": "TADA",
     "kokoro": "Kokoro",
+    "voicetut": "VoiceTut Egyptian Arabic",
 }
 
 LLM_ENGINES = {
@@ -288,6 +289,14 @@ def _get_non_qwen_tts_configs() -> list[ModelConfig]:
     These are static — no backend-type branching needed.
     """
     return [
+        ModelConfig(
+            model_name="voicetut",
+            display_name="VoiceTut Egyptian Arabic (17 Voices)",
+            engine="voicetut",
+            hf_repo_id="mohammedaly22/VoiceTut-TTS",
+            size_mb=2400,
+            languages=["ar", "en"],
+        ),
         ModelConfig(
             model_name="luxtts",
             display_name="LuxTTS (Fast, CPU-friendly)",
@@ -708,6 +717,10 @@ def get_tts_backend_for_engine(engine: str) -> TTSBackend:
             from .qwen_custom_voice_backend import QwenCustomVoiceBackend
 
             backend = QwenCustomVoiceBackend()
+        elif engine == "voicetut":
+            from .voicetut_backend import VoiceTutTTSBackend
+
+            backend = VoiceTutTTSBackend()
         else:
             raise ValueError(f"Unknown TTS engine: {engine}. Supported: {list(TTS_ENGINES.keys())}")
 

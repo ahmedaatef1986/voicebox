@@ -22,6 +22,7 @@ const generationSchema = z.object({
     .enum([
       'qwen',
       'qwen_custom_voice',
+      'voicetut',
       'luxtts',
       'chatterbox',
       'chatterbox_turbo',
@@ -88,7 +89,9 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
     try {
       const engine = data.engine || 'qwen';
       const modelName =
-        engine === 'luxtts'
+        engine === 'voicetut'
+          ? 'voicetut'
+          : engine === 'luxtts'
           ? 'luxtts'
           : engine === 'chatterbox'
             ? 'chatterbox-tts'
@@ -104,7 +107,9 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
                     ? `qwen-custom-voice-${data.modelSize}`
                     : `qwen-tts-${data.modelSize}`;
       const displayName =
-        engine === 'luxtts'
+        engine === 'voicetut'
+          ? 'VoiceTut Egyptian Arabic'
+          : engine === 'luxtts'
           ? 'LuxTTS'
           : engine === 'chatterbox'
             ? 'Chatterbox TTS'

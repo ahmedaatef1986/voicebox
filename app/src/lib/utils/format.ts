@@ -52,6 +52,8 @@ export function formatAbsoluteDate(date: string | Date): string {
 
 const ENGINE_DISPLAY_NAMES: Record<string, string> = {
   qwen: 'Qwen',
+  qwen_custom_voice: 'Qwen CustomVoice',
+  voicetut: 'VoiceTut',
   luxtts: 'LuxTTS',
   chatterbox: 'Chatterbox',
   chatterbox_turbo: 'Chatterbox Turbo',
